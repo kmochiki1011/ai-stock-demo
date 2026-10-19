@@ -1,0 +1,76 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI株式練習帳 v8</title><style>body{margin:0;background:#0b1019;color:#e9eef7;font:15px system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:22px}h1{font-size:24px}.muted,small{color:#a4b4c7}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.card{background:#172232;border:1px solid #334155;border-radius:15px;padding:18px;margin:10px 0}.value{font-size:27px;font-weight:bold;margin:8px 0}.green{color:#61d5a1}.red{color:#ff8794}.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:780px}td,th{padding:10px;text-align:left;border-bottom:1px solid #334155}button{background:#337bb8;color:white;border:0;border-radius:9px;padding:13px 16px;margin:5px;cursor:pointer;font-size:15px}button:focus-visible{outline:3px solid white}h2{font-size:18px;margin-top:28px}
+input,select{background:#0b1019;color:#fff;border:1px solid #64748b;border-radius:8px;padding:12px;max-width:100%;box-sizing:border-box}
+.form{display:flex;flex-wrap:wrap;gap:10px;align-items:end}label{display:flex;flex-direction:column;gap:5px}.note{line-height:1.7}
+@media(max-width:600px){main{padding:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.grid>.card{padding:12px;min-width:0}.value{font-size:23px}.card{padding:13px}.form{display:grid;grid-template-columns:1fr 1fr}.form label:first-child{grid-column:1/-1}input,select{width:100%}table{min-width:0}#holdTable thead,#historyTable thead{display:none}#holdTable tr,#historyTable tr{display:block;border-bottom:1px solid #475569;padding:9px 0}#holdTable td,#historyTable td{display:flex;justify-content:space-between;gap:12px;padding:7px 4px;border:0;text-align:right;overflow-wrap:anywhere}#holdTable td:before,#historyTable td:before{content:attr(data-label);font-weight:600;text-align:left;color:#a4b4c7}#holdTable td[colspan],#historyTable td[colspan]{display:block;text-align:left}}
+/* v8: iPhone readable history cards */
+#historyTable td,#holdTable td{font-variant-numeric:tabular-nums}
+#historyTable .trade-buy{color:#61d5a1;font-weight:700}#historyTable .trade-sell{color:#ffad77;font-weight:700}
+#apiStatus{overflow-wrap:anywhere}
+@media(max-width:600px){
+ #historyTable tr,#holdTable tr{margin-bottom:12px;padding:12px;border:1px solid #40536b;border-radius:12px;background:#101b2a}
+ #historyTable td,#holdTable td{display:grid;grid-template-columns:minmax(85px,42%) minmax(0,1fr);align-items:start;text-align:right;padding:6px 3px;line-height:1.4}
+ #historyTable td:before,#holdTable td:before{content:attr(data-label);text-align:left;color:#a4b4c7;font-size:13px}
+ #historyTable td:first-child,#holdTable td:first-child{font-weight:700}
+ #historyTable td[colspan],#holdTable td[colspan]{display:block}
+ #historyTable td[colspan]:before,#holdTable td[colspan]:before{display:none}
+ .form button{width:100%;margin:0;min-height:46px}
+ #sample,#reset{width:calc(50% - 12px);padding:12px 6px;margin:4px}
+}
+</style></head><body><main>
+<small>v8 / 仮想運用・架空価格（実際の注文なし）</small><h1>AI株式練習帳｜日本株・米国株</h1>
+<div class="grid">
+<div class="card"><small>総資産（円換算）</small><div class="value" id="assets">¥500,000</div><small>開始資金 ¥500,000</small></div>
+<div class="card"><small>評価損益（保有分）</small><div class="value" id="profit">¥0</div></div>
+<div class="card"><small>保有銘柄数</small><div class="value" id="holdings">0</div></div>
+<div class="card"><small>現金残高</small><div class="value" id="cash">¥500,000</div></div></div>
+<h2>AIの判断（ルール例示）</h2><div class="card" id="decision"></div>
+<h2>仮想取引</h2><div class="card"><p class="note">開始資金50万円。1銘柄の購入額は開始資金の20％（10万円）以内。株価と為替はデモ用の固定値です。</p>
+<button id="sample" type="button">サンプル取引を表示</button><button id="reset" type="button">初期状態に戻す</button>
+<div class="form"><label>銘柄<select id="symbol"><option value="7203">トヨタ自動車（7203）</option><option value="NVDA">NVIDIA（NVDA）</option></select></label><label>株数<input id="qty" type="number" min="1" step="1" value="1"></label><button id="buy" type="button">仮想購入</button><button id="sell" type="button">仮想売却</button></div><p id="status" role="status" aria-live="polite">初期状態です。</p></div>
+<h2>株価の更新（安全なAPI中継サーバー対応）</h2><div class="card"><p>米国株の株価取得用中継サーバーを接続できます。接続先未設定では自動取得しません。APIキーをこのHTMLに入力しないでください。</p><label>株価取得サーバーURL（HTTPS）<input id="apiEndpoint" type="url" placeholder="https://example.com/api/quotes"></label><button id="fetchQuote" type="button">米国株価を取得</button><p id="apiStatus" role="status">未接続：サンプル価格を表示中</p></div><div class="card"><p class="note">株価APIは未接続です。確認した株価を入力すると仮想資産を再評価できます。</p><div class="form"><label>銘柄<select id="priceSymbol"><option value="7203">トヨタ自動車（円）</option><option value="NVDA">NVIDIA（米ドル）</option></select></label><label>現在価格<input id="priceInput" type="number" min="0.01" step="0.01" value="2520"></label><button type="button" id="updatePrice">価格を更新</button></div><small id="priceStatus">初期価格は架空です。</small></div><h2>保有銘柄</h2><div class="card scroll"><table id="holdTable"><thead><tr><th>銘柄</th><th>市場</th><th>株数</th><th>購入単価（平均）</th><th>現在値（例）</th><th>評価額（円）</th><th>損益（円）</th></tr></thead><tbody id="rows"></tbody></table></div>
+<h2>売買履歴</h2><div class="card scroll"><table id="historyTable"><thead><tr><th>日時</th><th>銘柄</th><th>売買</th><th>株数</th><th>単価</th><th>金額（円）</th></tr></thead><tbody id="history"></tbody></table></div>
+<h2>戦略別の比較（独立した例示）</h2><div class="grid" id="strategies"></div>
+<p class="muted note">※実在銘柄名を使った練習用デモです。株価自動取得は接続先を用意した場合に限ります。株価・為替（1ドル＝150円）・戦略成績は架空です。価格API、証券口座、注文APIには未接続。手数料・税金・為替変動は考慮していません。端末内のブラウザ保存機能が使える場合に取引状態を保存します。プライベートブラウズやファイルの開き方によっては保存できないことがあります。</p>
+</main><script>
+(function(){"use strict";
+var initial=500000, key="ai-stock-v8-state", fx=150;
+var stocks={"7203":{name:"トヨタ自動車",market:"日本",price:2520,unit:"¥",rate:1},"NVDA":{name:"NVIDIA",market:"米国",price:152,unit:"$",rate:fx}};
+var state={cash:initial,holdings:{},history:[],prices:{},priceUpdated:{}};
+function el(x){return document.getElementById(x)}
+function yen(n){return (n<0?"−¥":"¥")+Math.abs(Math.round(n)).toLocaleString("ja-JP")}
+function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
+function load(){try{var s=JSON.parse(localStorage.getItem(key)||localStorage.getItem("ai-stock-v7-state"));if(s&&Number.isFinite(s.cash)&&s.holdings&&Array.isArray(s.history))state=s}catch(e){}}
+function currentPrice(id){return Number(state.prices&&state.prices[id])||stocks[id].price}
+function msg(s){el("status").textContent=s}
+function trade(id,qty,side){var s=stocks[id],h=state.holdings[id]||{qty:0,cost:0},amount=qty*currentPrice(id)*s.rate;
+if(side==="買い"){if(amount>100000+0.00001){msg("1回の購入額が10万円を超えています。");return}
+if(h.cost+amount>100000+0.00001){msg("この銘柄の保有取得額が上限10万円を超えます。");return}
+if(state.cash<amount){msg("現金残高が不足しています。");return}
+state.cash-=amount;h.qty+=qty;h.cost+=amount;state.holdings[id]=h;
+}else{if(h.qty<qty){msg("売却する株数が保有数を超えています。");return}
+var avg=h.cost/h.qty;h.cost-=avg*qty;h.qty-=qty;state.cash+=amount;if(h.qty===0)delete state.holdings[id];else state.holdings[id]=h;
+}
+state.history.unshift({time:new Date().toLocaleString("ja-JP"),id:id,side:side,qty:qty,price:currentPrice(id),amount:amount});
+save();render();msg(s.name+"を"+qty+"株、仮想"+side+"しました。");
+}
+function render(){var value=0,cost=0,ids=Object.keys(state.holdings);
+var rows=ids.map(function(id){var h=state.holdings[id],s=stocks[id],v=h.qty*currentPrice(id)*s.rate;value+=v;cost+=h.cost;var p=v-h.cost;return "<tr><td data-label='銘柄'>"+s.name+"</td><td data-label='市場'>"+s.market+"</td><td data-label='株数'>"+h.qty+"</td><td data-label='平均購入単価'>"+s.unit+(h.cost/h.qty/s.rate).toFixed(2)+"</td><td data-label='現在値'>"+s.unit+currentPrice(id)+"</td><td data-label='評価額'>"+yen(v)+"</td><td data-label='損益' class='"+(p>=0?"green":"red")+"'>"+yen(p)+"</td></tr>"}).join("");
+el("assets").textContent=yen(state.cash+value);el("cash").textContent=yen(state.cash);el("holdings").textContent=ids.length;
+el("profit").textContent=yen(value-cost);el("profit").className="value "+(value>=cost?"green":"red");
+el("rows").innerHTML=rows||'<tr><td colspan="7">まだ保有銘柄はありません。</td></tr>';
+el("history").innerHTML=state.history.map(function(t){var s=stocks[t.id];return "<tr><td data-label='日時'>"+t.time+"</td><td data-label='銘柄'>"+s.name+"</td><td data-label='売買' class='"+(t.side==="買い"?"trade-buy":"trade-sell")+"'>"+t.side+"</td><td data-label='株数'>"+t.qty+"</td><td data-label='単価'>"+s.unit+t.price+"</td><td data-label='金額（円）'>"+yen(t.amount)+"</td></tr>"}).join("")||'<tr><td colspan="6">売買履歴はありません。</td></tr>';
+el("decision").textContent=ids.length?"仮想判断：保有銘柄の価格を確認し、購入上限と現金残高を守って取引してください。実際のAI分析ではありません。":"仮想判断：条件を満たす銘柄がなければ見送り。現在はデモ用の固定価格です。";
+el("strategies").innerHTML=[["短期","+0.25%"],["トレンド","+0.12%"],["割安","−0.05%"]].map(function(x){return '<div class="card"><b>'+x[0]+'</b><div class="value">'+x[1]+'</div><small>独立した架空の成績</small></div>'}).join("");
+}
+el("fetchQuote").addEventListener("click",async function(){var url=el("apiEndpoint").value.trim();if(!/^https:\/\//.test(url)){el("apiStatus").textContent="HTTPSのサーバーURLを入力してください。";return}el("apiStatus").textContent="取得中…";try{var u=new URL(url);u.searchParams.set("symbol","NVDA");var res=await fetch(u.toString(),{headers:{"Accept":"application/json"},cache:"no-store"});if(!res.ok)throw Error("HTTP "+res.status);var data=await res.json();var price=Number(data.price);if(data.symbol!=="NVDA"||!Number.isFinite(price)||price<=0)throw Error("応答形式が不正です（symbol: NVDA, price: 数値 が必要）");state.prices=state.prices||{};state.priceUpdated=state.priceUpdated||{};state.prices.NVDA=price;state.priceUpdated.NVDA=new Date().toLocaleString("ja-JP");save();render();el("apiStatus").textContent="取得成功：NVDA $"+price+" / "+state.priceUpdated.NVDA;el("priceStatus").textContent="NVDAはAPI取得価格です。"}catch(e){el("apiStatus").textContent="取得失敗："+e.message+"。直前の価格を維持します（API接続とCORS設定を確認）。"}});
+el("priceSymbol").addEventListener("change",function(){el("priceInput").value=currentPrice(this.value)});
+el("updatePrice").addEventListener("click",function(){var id=el("priceSymbol").value,p=Number(el("priceInput").value);if(!Number.isFinite(p)||p<=0){msg("正しい価格を入力してください。");return}state.prices=state.prices||{};state.priceUpdated=state.priceUpdated||{};state.prices[id]=p;state.priceUpdated[id]=new Date().toLocaleString("ja-JP");save();render();el("priceStatus").textContent=stocks[id].name+" 更新: "+state.priceUpdated[id]+"（手動入力）";msg("手動価格を反映しました。")});
+el("buy").addEventListener("click",function(){act("買い")});
+el("sell").addEventListener("click",function(){act("売り")});
+function act(side){var qty=Number(el("qty").value);if(!Number.isSafeInteger(qty)||qty<1){msg("株数は1以上の整数で入力してください。");return}trade(el("symbol").value,qty,side)}
+el("sample").addEventListener("click",function(){state={cash:initial,holdings:{},history:[],prices:{},priceUpdated:{}};trade("7203",30,"買い");trade("NVDA",1,"買い");msg("トヨタ30株とNVIDIA1株のサンプル取引を表示しました。")});
+el("reset").addEventListener("click",function(){state={cash:initial,holdings:{},history:[],prices:{},priceUpdated:{}};save();render();msg("初期状態に戻しました。")});
+load();render();
+})();
+</script></body></html>
